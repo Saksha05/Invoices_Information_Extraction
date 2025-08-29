@@ -53,7 +53,7 @@ A modern web application that extracts structured data from invoice images using
 
 1. **Start the application**:
    ```bash
-   python app.py
+   python invoice.py
    ```
 
 2. **Open your browser** and go to `http://localhost:5000`
