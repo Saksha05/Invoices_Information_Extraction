@@ -1,0 +1,52 @@
+{
+  "invoice_number": "KBM-25-26-463",
+  "invoice_date": "31-May-25",
+  "supplier": {
+    "name": "KANTHAN BLUE METALS",
+    "address": "2ND FLOOR, E 30, 2ND AVENUE BESANT NAGAR, CHENNAI",
+    "gst_uin": "33AAUFK0192R2ZK",
+    "state": "Tamil Nadu",
+    "state_code": "33"
+  },
+  "consignee": {
+    "name": "AVP RMC",
+    "address": "162,ATHIPALAYAM ROAD SREEVATSA GLOBAL VILLAGE IMBATORE",
+    "state": "Tamil Nadu",
+    "state_code": "33"
+  },
+  "buyer": {
+    "name": "AVP RMC",
+    "address": "Mangalam Road 63 Velampalayam Palladam Tiruppur",
+    "gst_uin": "83ABKFA0736G1ZS",
+    "state": "Tamil Nadu",
+    "state_code": "33"
+  },
+  "items": [
+    {
+      "description": "20MM OUT PUT",
+      "hsn_sac": "2517",
+      "quantity": "682 UNITS",
+      "rate": "2,666.67 UNITS",
+      "amount": "18,186.69"
+    }
+  ],
+  "total_amount": "19,096.00",
+  "total_amount_words": "Nineteen Thousand Ninety Six Only",
+  "cgst": "454.67",
+  "sgst": "454.67",
+  "total_tax": "909.34",
+  "total_tax_words": "Nine Hundred Nine and Thirty Four paise Only",
+  "delivery_note_date": "31-May-25",
+  "dispatch_doc_no": null,
+  "bill_of_lading_lr_rr_no": null,
+  "motor_vehicle_no": "TN42BZ8473",
+  "terms_of_payment": null,
+  "buyer_order_no": "4010",
+  "buyer_order_date": null,
+  "reference_no": null,
+  "reference_date": null,
+  "other_references": null,
+  "dispatched_through": null,
+  "destination": "COIMBATORE"
+
+}
