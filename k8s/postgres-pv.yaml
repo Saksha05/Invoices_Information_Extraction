@@ -1,0 +1,20 @@
+# ============================================================================
+# PersistentVolumeClaim for PostgreSQL Database
+# Uses dynamic provisioning (standard storageClass) for Kind compatibility
+# ============================================================================
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: insurance-rag
+  labels:
+    app: insurance-rag
+    component: database
+spec:
+  storageClassName: standard  # Use Kind's default storageClass
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

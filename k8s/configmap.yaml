@@ -1,0 +1,71 @@
+# ============================================================================
+# ConfigMap for PostgreSQL Initialization Script
+# Contains the SQL script to initialize the database with pgvector extension
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-config
+  namespace: insurance-rag
+  labels:
+    app: insurance-rag
+    component: database
+data:
+  init-db.sql: |
+    -- ============================================================================
+    -- PostgreSQL Database Initialization Script
+    -- Sets up the database for Insurance RAG Application
+    -- ============================================================================
+
+    -- Enable pgvector extension for vector similarity search
+    CREATE EXTENSION IF NOT EXISTS vector;
+
+    -- Verify extension is installed
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM pg_extension WHERE extname = 'vector'
+        ) THEN
+            RAISE NOTICE 'pgvector extension successfully installed';
+        ELSE
+            RAISE EXCEPTION 'Failed to install pgvector extension';
+        END IF;
+    END $$;
+
+    -- Create schema for application tables (optional, for organization)
+    CREATE SCHEMA IF NOT EXISTS insurance;
+
+    -- Set search path to include the new schema
+    SET search_path TO insurance, public;
+
+    -- Grant necessary permissions to postgres user
+    GRANT ALL PRIVILEGES ON SCHEMA insurance TO postgres;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA insurance TO postgres;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA insurance TO postgres;
+
+    -- Log successful initialization
+    DO $$
+    BEGIN
+        RAISE NOTICE 'Database initialization completed successfully';
+        RAISE NOTICE 'pgvector version: %', (SELECT extversion FROM pg_extension WHERE extname = 'vector');
+    END $$;
+
+    -- ============================================================================
+    -- Optional: Create utility functions for debugging
+    -- ============================================================================
+
+    -- Function to check vector dimensions
+    CREATE OR REPLACE FUNCTION check_vector_dimension(vec vector)
+    RETURNS INTEGER AS $$
+    BEGIN
+        RETURN array_length(vec::text::float[], 1);
+    END $$
+    LANGUAGE plpgsql;
+
+    -- Function to calculate cosine similarity
+    CREATE OR REPLACE FUNCTION cosine_similarity(a vector, b vector)
+    RETURNS FLOAT AS $$
+    BEGIN
+        RETURN 1 - (a <=> b);
+    END $$
+    LANGUAGE plpgsql;

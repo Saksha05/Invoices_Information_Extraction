@@ -1,0 +1,21 @@
+# ============================================================================
+# PersistentVolumeClaim for Application Data
+# Stores uploaded files and processing results
+# Uses dynamic provisioning (standard storageClass) for Kind compatibility
+# ============================================================================
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data-pvc
+  namespace: insurance-rag
+  labels:
+    app: insurance-rag
+    component: application
+spec:
+  storageClassName: standard  # Use Kind's default storageClass
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

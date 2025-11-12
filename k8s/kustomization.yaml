@@ -1,0 +1,82 @@
+# ============================================================================
+# Kustomization Configuration for Insurance RAG Application
+# Manages all Kubernetes resources and generates secrets
+# ============================================================================
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Namespace for all resources
+namespace: insurance-rag
+
+# Common labels applied to all resources
+commonLabels:
+  app: insurance-rag
+  managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  description: "Insurance RAG Application with PostgreSQL and Streamlit"
+  version: "1.0.0"
+
+# Resources to deploy
+resources:
+  # Namespace
+  - namespace.yaml
+  
+  # ConfigMaps
+  - configmap.yaml
+  
+  # Persistent Volumes and Claims
+  - postgres-pv.yaml
+  - app-data-pv.yaml
+  - app-logs-pv.yaml
+  - models-pv.yaml
+  
+  # Services
+  - postgres-service.yaml
+  - rag-app-service.yaml
+  
+  # Deployments
+  - postgres-deployment.yaml
+  - rag-app-deployment.yaml
+
+# Secret Generator - Create secrets from files or literals
+# IMPORTANT: Create these files before running kustomize build
+secretGenerator:
+  - name: insurance-rag-secrets
+    namespace: insurance-rag
+    literals:
+      - POSTGRES_DB=insurance_rag
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123  # Change in production!
+      - POSTGRES_HOST=postgres-service
+      - POSTGRES_PORT=5432
+    # Uncomment and add your actual API key file
+    # files:
+    #   - GOOGLE_API_KEY=.secrets/google-api-key.txt
+
+# ConfigMap Generator - Generate ConfigMaps from files
+# configMapGenerator:
+#   - name: app-config
+#     namespace: insurance-rag
+#     files:
+#       - app-config.yaml
+
+# Images - Specify image tags (useful for CI/CD)
+images:
+  - name: pgvector/pgvector
+    newTag: pg16
+  - name: localhost/invoices_information_extraction_rag-app
+    newTag: latest
+
+# Patches - Apply modifications to resources
+# patches:
+#   - path: patch-resource-limits.yaml
+#     target:
+#       kind: Deployment
+#       name: rag-app-deployment
+
+# Transformers for modifying resources
+# transformers:
+#   - transformer.yaml

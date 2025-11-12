@@ -1,0 +1,141 @@
+# ============================================================================
+# PostgreSQL Database Deployment
+# Deployment for PostgreSQL 16 with pgvector extension
+# Configured with health checks, resource limits, and persistent storage
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  namespace: insurance-rag
+  labels:
+    app: insurance-rag
+    component: database
+spec:
+  replicas: 1  # Single replica for database consistency
+  strategy:
+    type: Recreate  # Ensure only one instance runs at a time
+  selector:
+    matchLabels:
+      app: insurance-rag
+      component: database
+  template:
+    metadata:
+      labels:
+        app: insurance-rag
+        component: database
+    spec:
+      # Security context for the pod
+      securityContext:
+        fsGroup: 999  # postgres group
+        runAsNonRoot: true
+        runAsUser: 999  # postgres user
+      
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:pg16
+        imagePullPolicy: IfNotPresent
+        
+        ports:
+        - containerPort: 5432
+          name: postgres
+          protocol: TCP
+        
+        env:
+        # Database configuration from Secret
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: insurance-rag-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: insurance-rag-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: insurance-rag-secrets
+              key: POSTGRES_PASSWORD
+        
+        # Performance tuning
+        - name: POSTGRES_INITDB_ARGS
+          value: "-E UTF8 --locale=en_US.UTF-8"
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        
+        # PostgreSQL configuration for better performance
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: "scram-sha-256"
+        
+        volumeMounts:
+        # Persistent data storage
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        
+        # Initialization script
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        
+        # Health checks
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres -d insurance_rag
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres -d insurance_rag
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Startup probe for initial database setup
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres -d insurance_rag
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30  # Allow up to 5 minutes for startup
+      
+      volumes:
+      # Persistent volume for database data
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+      
+      # ConfigMap for initialization script
+      - name: init-script
+        configMap:
+          name: postgres-init-config
+          items:
+          - key: init-db.sql
+            path: 01-init.sql
+      
+      # Restart policy
+      restartPolicy: Always

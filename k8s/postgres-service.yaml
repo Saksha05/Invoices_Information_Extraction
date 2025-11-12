@@ -1,0 +1,27 @@
+# ============================================================================
+# Service for PostgreSQL Database
+# ClusterIP service for internal database access within the cluster
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: insurance-rag
+  labels:
+    app: insurance-rag
+    component: database
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet-like behavior
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: insurance-rag
+    component: database
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800

@@ -1,0 +1,29 @@
+# ============================================================================
+# Service for RAG Application (Streamlit UI)
+# NodePort service for external access to the Streamlit application
+# For production, consider using LoadBalancer or Ingress
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-app-service
+  namespace: insurance-rag
+  labels:
+    app: insurance-rag
+    component: application
+  annotations:
+    # For Minikube: Use 'minikube service rag-app-service -n insurance-rag' to access
+    # For Kind: Port forwarding may be needed
+    service.kubernetes.io/description: "Streamlit UI for Insurance RAG Application"
+spec:
+  type: NodePort
+  ports:
+    - port: 8501
+      targetPort: 8501
+      nodePort: 30501  # Fixed NodePort for consistent access
+      protocol: TCP
+      name: streamlit
+  selector:
+    app: insurance-rag
+    component: application
+  sessionAffinity: ClientIP

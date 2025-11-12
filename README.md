@@ -127,6 +127,83 @@ The application returns structured JSON data containing:
 
 This project is for educational and personal use. Please ensure you comply with Google's API terms of service.
 
+## Kubernetes Deployment
+
+### Prerequisites
+- `kubectl` installed
+- `kind` (Kubernetes in Docker) installed
+- `podman` or `docker` installed
+
+### Quick Start Commands
+
+#### 1. Start the Cluster
+```bash
+kind create cluster --name insurance-rag
+```
+
+#### 2. Deploy the Application
+```bash
+./deploy-k8s.sh
+```
+
+#### 3. Access the Application
+```bash
+kubectl port-forward -n insurance-rag svc/rag-app-service 8501:8501
+```
+Then open http://localhost:8501 in your browser.
+
+---
+
+### Management Commands
+
+#### Check Pod Status
+```bash
+kubectl get pods -n insurance-rag
+```
+
+#### View Application Logs
+```bash
+# Current logs
+kubectl logs -n insurance-rag -l component=application --tail=100 -f
+
+# Previous pod logs (if crashed)
+kubectl logs -n insurance-rag deployment/rag-app-deployment --previous
+```
+
+#### Check PostgreSQL Logs
+```bash
+kubectl logs -n insurance-rag -l component=database --tail=50
+```
+
+#### Verify Services
+```bash
+kubectl get svc -n insurance-rag
+```
+
+#### Check Storage Volumes
+```bash
+kubectl get pvc -n insurance-rag
+```
+
+#### Restart Deployment (if needed)
+```bash
+kubectl rollout restart deployment/rag-app-deployment -n insurance-rag
+```
+
+#### Stop Port Forwarding
+Press `Ctrl+C` in the terminal where port-forward is running
+
+#### Delete the Cluster (cleanup)
+```bash
+kind delete cluster --name insurance-rag
+```
+
+For detailed deployment instructions, see [KUBERNETES_DEPLOYMENT.md](KUBERNETES_DEPLOYMENT.md).
+
+---
+
 ## Contributing
 
 Feel free to submit issues and enhancement requests! 
+
+``` 

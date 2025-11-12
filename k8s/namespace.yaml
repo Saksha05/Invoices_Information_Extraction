@@ -1,0 +1,11 @@
+# ============================================================================
+# Namespace for Insurance RAG Application
+# Isolates all resources in a dedicated namespace
+# ============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: insurance-rag
+  labels:
+    app: insurance-rag
+    environment: development
