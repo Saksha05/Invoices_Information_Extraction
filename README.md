@@ -47,9 +47,42 @@ A modern web application that extracts structured data from invoice images using
 5. **Set up Google AI API**:
    - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
    - Create an API key
-   - Replace the `google_api_key` variable in `app.py` with your key
+   - Create a `.env` file in the project root:
+     ```bash
+     GOOGLE_API_KEY=your_api_key_here
+     ```
 
 ## Usage
+
+### Option 1: Docker Compose (Recommended)
+
+1. **Start the application**:
+   ```bash
+   podman-compose up -d
+   # or with docker
+   docker-compose up -d
+   ```
+
+2. **Check container status**:
+   ```bash
+   podman-compose ps
+   ```
+
+3. **Open your browser** and go to `http://localhost:8501`
+
+4. **Upload and process invoices** through the Streamlit interface
+
+5. **View logs** (if needed):
+   ```bash
+   podman-compose logs -f
+   ```
+
+6. **Stop the application**:
+   ```bash
+   podman-compose down
+   ```
+
+### Option 2: Local Python
 
 1. **Start the application**:
    ```bash
@@ -80,6 +113,50 @@ A modern web application that extracts structured data from invoice images using
 - BMP
 - TIFF
 - GIF
+
+## Docker Compose Commands
+
+### Basic Operations
+```bash
+# Start containers in detached mode
+podman-compose up -d
+
+# Start with rebuild
+podman-compose up -d --build
+
+# Check container status
+podman-compose ps
+
+# View logs (all containers)
+podman-compose logs -f
+
+# View logs (specific service)
+podman-compose logs -f rag-app
+podman-compose logs -f postgres
+
+# Stop containers
+podman-compose down
+
+# Stop and remove volumes (⚠️ DELETES ALL DATA)
+podman-compose down -v
+```
+
+### Troubleshooting
+```bash
+# Restart a specific service
+podman-compose restart rag-app
+
+# Remove corrupted PostgreSQL data
+podman-compose down
+rm -rf ./data/postgres/pgdata
+podman-compose up -d
+
+# View container resource usage
+podman stats
+
+# Access PostgreSQL shell
+podman exec -it insurance-postgres psql -U postgres -d insurance_rag
+```
 
 ## Output Format
 
