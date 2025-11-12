@@ -1,120 +1,109 @@
-# # syntax=docker/dockerfile:1
-# # --- Base image ---
-# FROM python:3.13-slim AS base
+# syntax=docker/dockerfile:1
 
-# # Prevent interactive prompts & set Python env flags
-# ENV DEBIAN_FRONTEND=noninteractive \
-#     PYTHONDONTWRITEBYTECODE=1 \
-#     PYTHONUNBUFFERED=1 \
-#     PIP_NO_CACHE_DIR=1 \
-#     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+# ============================================================================
+# Multi-stage Dockerfile for Insurance RAG Application
+# Optimized for production with minimal image size and enhanced security
+# Compatible with both Docker and Podman
+# ============================================================================
 
-# # Install system dependencies
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     build-essential \
-#     tesseract-ocr \
-#     poppler-utils \
-#     libgl1 \
-#     libglib2.0-0 \
-#     curl \
-#     ca-certificates \
-#     git \
-#     && rm -rf /var/lib/apt/lists/*
+# ============================================================================
+# Stage 1: Builder - Compile dependencies and prepare virtual environment
+# ============================================================================
+FROM python:3.11-slim AS builder
 
-# # Create non-root user
-# RUN useradd -m appuser
-# WORKDIR /app
+# Prevent Python from writing bytecode and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# # Copy requirements and install Python packages
-# COPY requirements.txt ./
+# Install build dependencies required for compiling Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# # Install pip packages with SSL verification disabled (for corporate proxy)
-# RUN pip install --upgrade pip \
-#     --trusted-host pypi.org \
-#     --trusted-host pypi.python.org \
-#     --trusted-host files.pythonhosted.org && \
-#     pip install --no-cache-dir -r requirements.txt \
-#     --trusted-host pypi.org \
-#     --trusted-host pypi.python.org \
-#     --trusted-host files.pythonhosted.org
+# Create virtual environment for dependency isolation
+WORKDIR /app
+RUN python -m venv /app/venv
 
-# # Copy the pre-downloaded model files (NO NETWORK ACCESS NEEDED!)
-# COPY ./models/all-MiniLM-L6-v2 /app/models/all-MiniLM-L6-v2
+# Activate virtual environment
+ENV PATH="/app/venv/bin:$PATH"
 
-# # Set HuggingFace cache environment variables to use local model
-# ENV TRANSFORMERS_CACHE=/app/models \
-#     SENTENCE_TRANSFORMERS_HOME=/app/models \
-#     HF_HOME=/app/models \
-#     HF_HUB_OFFLINE=1
+# Copy only requirements first for optimal layer caching
+COPY requirements.txt .
 
-# # Copy application source
-# COPY . .
+# Install Python dependencies in virtual environment
+# Using --no-cache-dir to reduce image size
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
-# # Set ownership to appuser
-# RUN chown -R appuser:appuser /app
+# ============================================================================
+# Stage 2: Runtime - Minimal production image
+# ============================================================================
+FROM python:3.11-slim AS runtime
 
-# # Switch to non-root user
-# USER appuser
+# Security: Create non-root user for running the application
+RUN groupadd -r appuser && useradd -r -g appuser -u 1001 appuser
 
-# # Set environment variables
-# ENV TESSERACT_CMD=/usr/bin/tesseract \
-#     APP_FILE=stream_invoice_clean.py
-
-# # Expose ports
-# EXPOSE 8501 8000
-
-# # Healthcheck
-# HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-#     CMD curl -f http://localhost:8501/ || exit 1
-
-# # Run Streamlit
-# CMD ["streamlit", "run", "stream_invoice_clean.py", "--server.port=8501", "--server.address=0.0.0.0"]
-
-
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Install only runtime dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    poppler-utils \
+    libpq5 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr \
-    tesseract-ocr-eng \
-    poppler-utils \
-    libpq-dev \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application files
-COPY stream_invoice_clean.py .
-COPY rag.py .
-COPY docker.env .env
-
-# Copy the models folder if it exists
-COPY models/ ./models/
-
-# Create necessary directories
-RUN mkdir -p /app/data /app/logs
+# Copy virtual environment from builder stage
+COPY --from=builder /app/venv /app/venv
 
 # Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/venv/bin:$PATH" \
+    TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata \
+    TRANSFORMERS_CACHE=/app/models \
+    SENTENCE_TRANSFORMERS_HOME=/app/models \
+    HF_HOME=/app/models \
+    HF_HUB_OFFLINE=0 \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    STREAMLIT_SERVER_PORT=8501 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0
 
-# Expose Streamlit default port
+# Copy application code
+COPY --chown=appuser:appuser stream_invoice_clean.py rag.py ./
+
+# Copy models directory (for offline operation)
+COPY --chown=appuser:appuser models/ ./models/
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/data /app/logs /app/.streamlit && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose Streamlit port
 EXPOSE 8501
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check to ensure container is running properly
+HEALTHCHECK --interval=30s \
+    --timeout=10s \
+    --start-period=40s \
+    --retries=3 \
     CMD curl --fail http://localhost:8501/_stcore/health || exit 1
 
-# Run the Streamlit app
-CMD ["streamlit", "run", "stream_invoice_clean.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Run Streamlit application
+CMD ["streamlit", "run", "stream_invoice_clean.py", \
+     "--server.port=8501", \
+     "--server.address=0.0.0.0", \
+     "--server.headless=true", \
+     "--server.fileWatcherType=none"]

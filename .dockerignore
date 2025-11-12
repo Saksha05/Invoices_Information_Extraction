@@ -1,24 +1,102 @@
-# Ignore local environment & caches
-myenv/
+# ============================================================================
+# Docker Ignore File - Excludes files from Docker build context
+# Reduces build context size and improves build performance
+# ============================================================================
+
+# Python cache and compiled files
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 *.pyc
 *.pyo
 *.pyd
-*.sqlite3
-.env
+
+# Virtual environments
+myenv/
+venv/
+env/
+ENV/
+.venv
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
 .git/
 .gitignore
-.DS_Store
-.idea/
-.vscode/
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Docker files (don't need these inside the container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Data and logs (will be mounted as volumes)
+data/
+logs/
+*.log
+*.tmp
+
+# Temporary files
+tmp/
+temp/
+*.sqlite3
+
+# Test files
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Environment files (secrets should be passed via env vars)
+.env
+.env.local
+.env.*.local
+*.env.backup
+
 # Build artifacts
 build/
 dist/
-.eggs/
 *.egg-info/
-# Logs & temp files
-*.log
-*.tmp
-*.swp
-# Jupyter checkpoints
-.ipynb_checkpoints/
+.eggs/
+
+# Package manager files
+pip-log.txt
+pip-delete-this-directory.txt
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Large files
+*.pdf
+*.zip
+*.tar.gz

@@ -30,8 +30,11 @@ os.environ['REQUESTS_CA_BUNDLE'] = ''
 
 load_dotenv()
 
-# Configure Tesseract path
-pytesseract.pytesseract.tesseract_cmd = r"C:\Users\IddyaSakshaRajesh\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+# Configure Tesseract path - works for both local Windows and Docker/Podman containers
+if os.name == 'nt':  # Windows
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Users\IddyaSakshaRajesh\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+else:  # Linux/Unix (Docker/Podman containers)
+    pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
 google_api_key = os.getenv("GOOGLE_API_KEY")
 

@@ -1,57 +1,158 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database with pgvector extension
   postgres:
-    image: pgvector/pgvector:pg15
+    image: pgvector/pgvector:pg16
     container_name: insurance-postgres
+    restart: unless-stopped
+    
     environment:
+      # Database configuration
       POSTGRES_DB: insurance_rag
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+      # PostgreSQL configuration
+      PGDATA: /var/lib/postgresql/data/pgdata
+    
     ports:
       - "5432:5432"
+    
     volumes:
+      # Persistent data storage
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      # Database initialization script
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    
+    networks:
+      - rag-network
+    
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d insurance_rag"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - rag-network
-    restart: unless-stopped
+      start_period: 10s
+    
+    # Security: Run as postgres user
+    user: postgres
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 
+  # Insurance RAG Application
   rag-app:
     build:
       context: .
       dockerfile: Dockerfile
+      # Use build args for flexibility
+      args:
+        PYTHON_VERSION: "3.11"
+    
     container_name: insurance-rag-app
+    restart: unless-stopped
+    
+    # Wait for postgres to be healthy before starting
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
     ports:
       - "8501:8501"
+    
     environment:
+      # Application configuration
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      
+      # Database connection
       - POSTGRES_HOST=postgres
       - POSTGRES_DB=insurance_rag
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres123
       - POSTGRES_PORT=5432
+      
+      # Python environment
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      
+      # Streamlit configuration
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      
+      # Model caching
+      - TRANSFORMERS_CACHE=/app/models
+      - SENTENCE_TRANSFORMERS_HOME=/app/models
+      - HF_HOME=/app/models
+    
     volumes:
-      # Mount models folder to avoid re-downloading
-      - ./models:/app/models:ro
-      # Mount for data persistence
-      - ./data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
+      # Mount models folder (read-write) for model caching
+      - ./models:/app/models
+      # Data persistence for uploads and processing
+      - app_data:/app/data
+      # Logs for debugging
+      - app_logs:/app/logs
+    
     networks:
       - rag-network
-    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limit
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+
 
 volumes:
+  # PostgreSQL data - persists database across container restarts
   postgres_data:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/postgres
+  
+  # Application data - uploaded files and processing results
+  app_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/app
+  
+  # Application logs - for debugging and monitoring
+  app_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/logs
+
 
 networks:
   rag-network:
-    driver: bridge~
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
